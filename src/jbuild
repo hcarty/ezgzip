@@ -1,0 +1,6 @@
+(jbuild_version 1)
+
+(library
+ ((name ezgzip)
+  (public_name ezgzip)
+  (libraries (astring crc cryptokit ocplib-endian rresult))))

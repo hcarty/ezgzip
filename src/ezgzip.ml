@@ -68,7 +68,34 @@ let compress ?level raw =
   String.concat [header; compressed; crc32_checksum; original_size]
 
 
+type flags = {text: bool; crc16: bool; extra: bool; name: bool; comment: bool}
+
+let flags_of_int i =
+  let bit x = i land x = x in
+  {text= bit 1; crc16= bit 2; extra= bit 4; name= bit 8; comment= bit 16}
+
+
 type t = {compressed: string; crc32: int32; original_size: int}
+
+let some_or_exit = function Some x -> x | None -> raise Exit
+
+let extra_content_length raw flags =
+  let extra_bytes = ref 0 in
+  let offset () = !extra_bytes + header_size in
+  ( if flags.extra then
+      let xlen = EndianString.LittleEndian.get_int16 raw (offset ()) in
+      extra_bytes := !extra_bytes + xlen + 2 ) ;
+  ( if flags.name then
+      let sub = String.sub_with_range ~first:(offset ()) raw in
+      let name = String.Sub.take ~sat:(fun c -> c <> '\000') sub in
+      extra_bytes := !extra_bytes + String.Sub.length name + 1 ) ;
+  ( if flags.comment then
+      let sub = String.sub_with_range ~first:(offset ()) raw in
+      let comment = String.Sub.take ~sat:(fun c -> c <> '\000') sub in
+      extra_bytes := !extra_bytes + String.Sub.length comment + 1 ) ;
+  if flags.crc16 then extra_bytes := !extra_bytes + 2 ;
+  !extra_bytes
+
 
 let parse_gzip_bytes raw =
   (* XXX: Ignoring most of the header may not be the best idea... *)
@@ -80,11 +107,22 @@ let parse_gzip_bytes raw =
   (* Check magic bytes *)
   (if String.is_prefix ~affix:id1_id2 raw then Ok () else error Invalid_format)
   >>= fun () ->
+  (* Parse flags *)
+  let flags = flags_of_int (Char.to_int raw.[3]) in
+  (* Calculate the extra content size so we can skip it *)
+  ( match extra_content_length raw flags with
+  | length -> Ok length
+  | exception Exit -> error Invalid_format )
+  >>= fun extra_size ->
   (* Make sure we actually have data left over *)
-  let compressed_length = String.length raw - header_size - footer_size in
-  assert (compressed_length >= 0) ;
+  let compressed_length =
+    String.length raw - header_size - footer_size - extra_size
+  in
+  (if compressed_length >= 0 then Ok () else error Invalid_format)
+  >>= fun () ->
   let compressed =
-    String.with_range ~first:header_size ~len:compressed_length raw
+    String.with_range ~first:(header_size + extra_size) ~len:compressed_length
+      raw
   in
   let crc32 =
     EndianString.LittleEndian.get_int32 raw (String.length raw - 4 - 4)

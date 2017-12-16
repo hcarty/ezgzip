@@ -72,7 +72,9 @@ type flags = {text: bool; crc16: bool; extra: bool; name: bool; comment: bool}
 
 let flags_of_int i =
   let bit x = i land x = x in
-  {text= bit 1; crc16= bit 2; extra= bit 4; name= bit 8; comment= bit 16}
+  if bit 32 || bit 64 || bit 128 then error Invalid_format
+  else
+    Ok {text= bit 1; crc16= bit 2; extra= bit 4; name= bit 8; comment= bit 16}
 
 
 type t = {compressed: string; crc32: int32; original_size: int}
@@ -108,7 +110,7 @@ let parse_gzip_bytes raw =
   (if String.is_prefix ~affix:id1_id2 raw then Ok () else error Invalid_format)
   >>= fun () ->
   (* Parse flags *)
-  let flags = flags_of_int (Char.to_int raw.[3]) in
+  flags_of_int (Char.to_int raw.[3]) >>= fun flags ->
   (* Calculate the extra content size so we can skip it *)
   ( match extra_content_length raw flags with
   | length -> Ok length

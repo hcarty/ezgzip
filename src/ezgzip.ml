@@ -108,7 +108,8 @@ let parse_gzip_bytes raw =
   (if String.is_prefix ~affix:id1_id2 raw then Ok () else error Invalid_format)
   >>= fun () ->
   (* Parse flags *)
-  flags_of_int (Char.to_int raw.[3]) >>= fun flags ->
+  flags_of_int (Char.to_int raw.[3])
+  >>= fun flags ->
   (* Calculate the extra content size so we can skip it *)
   ( match extra_content_length raw flags with
   | length -> Ok length

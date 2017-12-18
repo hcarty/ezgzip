@@ -79,8 +79,6 @@ let flags_of_int i =
 
 type t = {compressed: string; crc32: int32; original_size: int}
 
-let some_or_exit = function Some x -> x | None -> raise Exit
-
 let extra_content_length raw flags =
   let extra_bytes = ref 0 in
   let offset () = !extra_bytes + header_size in

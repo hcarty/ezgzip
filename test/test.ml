@@ -6,6 +6,10 @@ let basic_predefined_checks () =
   Alcotest.(check (result string gzip_error))
     "Known bad" (Error (`Gzip (Compression_error "placeholder message")))
     (Ezgzip.decompress "probably not gzip") ;
+  let big = String.make 1_000_000 'x' in
+  Alcotest.(check (result string gzip_error))
+    "Big-ish" (Ok big)
+    (Ezgzip.compress big |> Ezgzip.decompress) ;
   ()
 
 

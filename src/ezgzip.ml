@@ -24,15 +24,45 @@ let pp_gzip_error fmt wrapped =
 
 let error e = R.error (`Gzip e)
 
-let id1_id2 = "\031\139"
+let zlib_compress ?level ?header input =
+  let pos = ref 0 in
+  let length = String.length input in
+  let output = Buffer.create 1_024 in
+  let feed buf =
+    let bytes = min (Bytes.length buf) (length - !pos) in
+    Bytes.blit_string input !pos buf 0 bytes ;
+    pos := !pos + bytes ;
+    bytes
+  in
+  let consume buf len = Buffer.add_subbytes output buf 0 len in
+  Zlib.compress ?level ?header feed consume ;
+  Buffer.contents output
+
+
+let zlib_uncompress ?header input =
+  let pos = ref 0 in
+  let length = String.length input in
+  let output = Buffer.create 1_024 in
+  let feed buf =
+    let bytes = min (Bytes.length buf) (length - !pos) in
+    Bytes.blit_string input !pos buf 0 bytes ;
+    pos := !pos + bytes ;
+    bytes
+  in
+  let consume buf len = Buffer.add_subbytes output buf 0 len in
+  Zlib.uncompress ?header feed consume ;
+  Buffer.contents output
+
+
+let id1_id2 = "\x1f‹"
 
 (* XXX: Hard-coded gzip header may not be the best idea... *)
 let header =
-  let compression_method = "\b" in
-  let flags1 = "\000" in
-  let time = "\000\000\000\000" in
-  let flags2 = "\000" in
-  let os = "\255" in
+  let compression_method = "\x08" in
+  let flags1 = "\x00" in
+  let time = "\x00\x00\x00\x00" in
+  let flags2 = "\x00" in
+  let os = "ÿ" in
   String.concat [id1_id2; compression_method; flags1; time; flags2; os]
 
 
@@ -57,10 +87,9 @@ let compress ?level raw =
     EndianString.LittleEndian.set_int32 buf 0 i ;
     Bytes.to_string buf
   in
-  let t = Cryptokit.Zlib.compress ?level () in
-  let compressed = Cryptokit.transform_string t raw in
+  let compressed = zlib_compress ?level raw in
   let length = String.length raw in
-  let crc32 = Crc.Crc32.string raw 0 length in
+  let crc32 = Zlib.update_crc_string 0l raw 0 length in
   let crc32_checksum = int32_to_bytestring crc32 in
   let original_size =
     int32_to_bytestring (Int32.of_int (length mod 0x1_0000_0000))
@@ -87,11 +116,11 @@ let extra_content_length raw flags =
       extra_bytes := !extra_bytes + xlen + 2 ) ;
   ( if flags.name then
       let sub = String.sub_with_range ~first:(offset ()) raw in
-      let name = String.Sub.take ~sat:(fun c -> c <> '\000') sub in
+      let name = String.Sub.take ~sat:(fun c -> c <> '\x00') sub in
       extra_bytes := !extra_bytes + String.Sub.length name + 1 ) ;
   ( if flags.comment then
       let sub = String.sub_with_range ~first:(offset ()) raw in
-      let comment = String.Sub.take ~sat:(fun c -> c <> '\000') sub in
+      let comment = String.Sub.take ~sat:(fun c -> c <> '\x00') sub in
       extra_bytes := !extra_bytes + String.Sub.length comment + 1 ) ;
   if flags.crc16 then extra_bytes := !extra_bytes + 2 ;
   !extra_bytes
@@ -141,11 +170,11 @@ let decompress ?(ignore_size= false) ?(ignore_checksum= false) raw =
   let ( >>= ) = R.( >>= ) in
   parse_gzip_bytes raw
   >>= fun {compressed; crc32; original_size} ->
-  (let t = Cryptokit.Zlib.uncompress () in
-   match Cryptokit.transform_string t compressed with
-   | uncompressed -> Ok uncompressed
-   | exception Cryptokit.Error Compression_error (_function, msg) ->
-       R.error (`Gzip (Compression_error msg)))
+  ( match zlib_uncompress compressed with
+  | uncompressed -> Ok uncompressed
+  | exception Zlib.Error (func, msg) ->
+      let message = Format.asprintf "in %s: %s" func msg in
+      R.error (`Gzip (Compression_error message)) )
   >>= fun uncompressed ->
   if not ignore_size
      && String.length uncompressed mod 0x1_0000_0000 <> original_size
@@ -154,7 +183,7 @@ let decompress ?(ignore_size= false) ?(ignore_checksum= false) raw =
       (`Gzip (Size {got= String.length uncompressed; expected= original_size}))
   else
     let crc32_calculated () =
-      Crc.Crc32.string uncompressed 0 (String.length uncompressed)
+      Zlib.update_crc_string 0l uncompressed 0 (String.length uncompressed)
     in
     if not ignore_checksum && crc32_calculated () <> crc32 then
       R.error (`Gzip Checksum)

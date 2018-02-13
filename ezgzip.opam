@@ -12,12 +12,11 @@ depends: [
   "alcotest" {test & >= "0.8.1"}
   "astring"
   "benchmark" {test & >= "1.4"}
-  "crc"
-  "cryptokit"
   "jbuilder" {build & >= "1.0+beta13"}
   "ocplib-endian"
   "odoc" {doc & >= "1.1.1"}
   "qcheck" {test & >= "0.7"}
   "rresult"
+  "camlzip"
 ]
 available: [ ocaml-version >= "4.03.0" ]

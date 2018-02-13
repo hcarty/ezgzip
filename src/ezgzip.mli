@@ -1,4 +1,5 @@
 type error =
+  | Truncated of string
   | Invalid_format
   | Compression_error of string
   | Size of {got: int; expected: int}
@@ -13,7 +14,7 @@ val compress : ?level:int -> string -> string
     @raise Invalid_argument if [level] is outside of the range 0 to 9. *)
 
 val decompress :
-  ?ignore_size:bool -> ?ignore_checksum:bool -> string
+  ?ignore_size:bool -> ?ignore_checksum:bool -> ?max_size:int -> string
   -> (string, [> `Gzip of error]) result
 (** [decompress src] decompresses the content from the gzip-compressed [src].
 
@@ -22,6 +23,11 @@ val decompress :
     @param ignore_checksum may be set to [true] if you want to ignore the
     expected decompressed data checksum in the gzip footer.  Defaults to
     [false].
+    @param max_size may be used to specify the maximum number of bytes to
+    decompress.  Defaults to [Sys.max_string_length].  If [src] decompresses to
+    more than [max_size] bytes then this function will return
+    [Error (`Gzip (Truncated truncated_content))] containing the content which
+    was decompressed.
 
     @return [Ok content] if the decompression was successful
     @return [Error err] if there was a problem during decompression *)

@@ -1,9 +1,15 @@
+(** Possible error cases *)
 type error =
   | Truncated of string
-  | Invalid_format
-  | Compression_error of string
+      (** Extracted size is greater than the allowed maximum size *)
+  | Invalid_format  (** Invalid data format *)
+  | Compression_error of string  (** zlib error *)
   | Size of {got: int; expected: int}
+      (** Extracted size does not match what was expected based on the source
+          metadata *)
   | Checksum
+      (** Extracted content checksum does not match what was expected based on
+          the source metadata *)
 
 val compress : ?level:int -> string -> string
 (** [compress src] returns a gzip-compressed version of [src].

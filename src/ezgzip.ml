@@ -29,7 +29,24 @@ let pp_gzip_error fmt wrapped =
 let error e = R.error (`Gzip e)
 
 module Z = struct
-  let compress ?level ?header input output =
+  type error = Truncated of string | Compression_error of string
+
+  let pp_error fmt error =
+    match error with
+    | Truncated content ->
+        Format.fprintf fmt "Truncated content after %d bytes"
+          (String.length content)
+    | Compression_error msg -> Format.fprintf fmt "Compression error: %s" msg
+
+
+  let pp_zlib_error fmt wrapped =
+    let `Zlib error = wrapped in
+    pp_error fmt error
+
+
+  let error e = R.error (`Zlib e)
+
+  let compress_zlib ?level ?header input output =
     let pos = ref 0 in
     let length = String.length input in
     let feed buf =
@@ -41,7 +58,7 @@ module Z = struct
     Zlib.compress ?level ?header feed output
 
 
-  let uncompress ?header input output =
+  let uncompress_zlib ?header input output =
     let pos = ref 0 in
     let length = String.length input in
     let feed buf =
@@ -53,16 +70,16 @@ module Z = struct
     Zlib.uncompress ?header feed output
 
 
-  let compress_to_string ?level ?header input =
+  let compress ?level ?header input =
     let compressed = Buffer.create 1_024 in
     let output buffer length =
       Buffer.add_subbytes compressed buffer 0 length
     in
-    compress ?level ?header input output ;
+    compress_zlib ?level ?header input output ;
     Buffer.contents compressed
 
 
-  let uncompress_to_string ?header ?(max_size= Sys.max_string_length) input =
+  let decompress ?header ?(max_size= Sys.max_string_length) input =
     let size = ref 0 in
     let uncompressed = Buffer.create 1_024 in
     let output buffer length =
@@ -73,9 +90,13 @@ module Z = struct
       else Buffer.add_subbytes uncompressed buffer 0 length
     in
     try
-      uncompress ?header input output ;
-      `Complete (Buffer.contents uncompressed)
-    with Exit -> `Truncated (Buffer.contents uncompressed)
+      uncompress_zlib ?header input output ;
+      Ok (Buffer.contents uncompressed)
+    with
+    | Exit -> error (Truncated (Buffer.contents uncompressed))
+    | Zlib.Error (func, msg) ->
+        let message = Format.asprintf "in %s: %s" func msg in
+        error (Compression_error message)
 end
 
 let id1_id2 = "\x1f‹"
@@ -111,7 +132,7 @@ let compress ?level raw =
     EndianString.LittleEndian.set_int32 buf 0 i ;
     Bytes.to_string buf
   in
-  let compressed = Z.compress_to_string ?level raw in
+  let compressed = Z.compress ?level raw in
   let length = String.length raw in
   let crc32 = Zlib.update_crc_string 0l raw 0 length in
   let crc32_checksum = int32_to_bytestring crc32 in
@@ -194,12 +215,11 @@ let decompress ?(ignore_size= false) ?(ignore_checksum= false) ?max_size raw =
   let ( >>= ) = R.( >>= ) in
   parse_gzip_bytes raw
   >>= fun {compressed; crc32; original_size} ->
-  ( match Z.uncompress_to_string ?max_size compressed with
-  | `Complete uncompressed -> Ok uncompressed
-  | `Truncated uncompressed -> error (Truncated uncompressed)
-  | exception Zlib.Error (func, msg) ->
-      let message = Format.asprintf "in %s: %s" func msg in
-      error (Compression_error message) )
+  ( match Z.decompress ?max_size compressed with
+  | Ok uncompressed -> Ok uncompressed
+  | Error `Zlib Truncated uncompressed -> error (Truncated uncompressed)
+  | Error `Zlib Compression_error message -> error (Compression_error message)
+  )
   >>= fun uncompressed ->
   if not ignore_size
      && String.length uncompressed mod 0x1_0000_0000 <> original_size

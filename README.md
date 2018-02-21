@@ -1,5 +1,8 @@
 # ezgzip - Simple gzip (de)compression library
 
+Documentation is available
+[here](https://hcarty.github.io/ezgzip/ezgzip/index.html).
+
 ```ocaml
 open Rresult
 

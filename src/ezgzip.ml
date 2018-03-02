@@ -46,7 +46,7 @@ module Z = struct
 
   let error e = R.error (`Zlib e)
 
-  let compress_zlib ?level ?header input output =
+  let compress_zlib ?level ?(header= false) input output =
     let pos = ref 0 in
     let length = String.length input in
     let feed buf =
@@ -55,10 +55,10 @@ module Z = struct
       pos := !pos + bytes ;
       bytes
     in
-    Zlib.compress ?level ?header feed output
+    Zlib.compress ?level ~header feed output
 
 
-  let uncompress_zlib ?header input output =
+  let uncompress_zlib ?(header= false) input output =
     let pos = ref 0 in
     let length = String.length input in
     let feed buf =
@@ -67,7 +67,7 @@ module Z = struct
       pos := !pos + bytes ;
       bytes
     in
-    Zlib.uncompress ?header feed output
+    Zlib.uncompress ~header feed output
 
 
   let compress ?level ?header input =

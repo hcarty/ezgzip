@@ -1,3 +1,6 @@
+# v0.2.1
+* Fix zlib formatting in gzip (de)compression
+
 # v0.2.0
 * Use `Zlib` from camlzip rather than cryptokit + crc
 * Allow capping the size of decompressed content

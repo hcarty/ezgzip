@@ -1,23 +1,22 @@
 .PHONY: all test benchmark doc repl clean gh-pages
 
 all:
-	jbuilder build --dev
+	dune build
 
 test:
-	jbuilder runtest --dev
+	dune runtest
 
 benchmark:
-	jbuilder build benchmark/bench.exe
-	_build/default/benchmark/bench.exe
+	dune exec benchmark/bench.exe
 
 doc:
-	jbuilder build @doc
+	dune build @doc
 
 repl:
-	jbuilder utop src
+	dune utop src
 
 clean:
-	jbuilder clean
+	dune clean
 
 gh-pages: doc
 	git clone `git config --get remote.origin.url` .gh-pages --reference .

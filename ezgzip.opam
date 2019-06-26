@@ -6,6 +6,7 @@ synopsis: "Simple gzip (de)compression library"
 homepage: "https://github.com/hcarty/ezgzip"
 dev-repo: "git+https://github.com/hcarty/ezgzip.git"
 bug-reports: "https://github.com/hcarty/ezgzip/issues"
+doc: "https://hcarty.github.io/ezgzip/ezgzip/"
 build: [
   ["dune" "build" "-p" name "-j" jobs]
   ["dune" "runtest" "-p" name "-j" jobs] {with-test}

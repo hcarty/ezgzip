@@ -1,3 +1,6 @@
+# v0.2.3
+* opam metadata tweaks to make dune-release happy
+
 # v0.2.2
 * Update to dune and opam 2.x
 

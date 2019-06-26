@@ -1,3 +1,6 @@
+# v0.2.2
+* Update to dune and opam 2.x
+
 # v0.2.1
 * Fix zlib formatting in gzip (de)compression
 

@@ -1,3 +1,5 @@
+open Rresult
+
 (** {1 gzip compression} *)
 
 (** Possible error cases *)

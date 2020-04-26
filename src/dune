@@ -1,4 +1,3 @@
 (library
- (name ezgzip)
  (public_name ezgzip)
- (libraries astring ocplib-endian rresult camlzip))
+ (libraries bigstringaf decompress.gz))

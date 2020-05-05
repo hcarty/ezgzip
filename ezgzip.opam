@@ -41,7 +41,7 @@ depends: [
   "alcotest" {with-test & >= "0.8.1"}
   "astring"
   "benchmark" {with-test & >= "1.4"}
-  "dune" {>= "1.0"}
+  "dune" {>= "1.1"}
   "ocplib-endian"
   "odoc" {with-doc & >= "1.1.1"}
   "qcheck" {with-test & >= "0.7"}

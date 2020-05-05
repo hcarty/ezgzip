@@ -1,6 +1,6 @@
 (executable
  (name test)
- (libraries alcotest ezgzip qcheck))
+ (libraries alcotest ezgzip qcheck-alcotest))
 
 (alias
  (name runtest)

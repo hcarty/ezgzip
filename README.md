@@ -1,5 +1,7 @@
 # ezgzip - Simple gzip (de)compression library
 
+![CI checks](https://github.com/hcarty/ezgzip/workflows/CI%20checks/badge.svg)
+
 ezgzip is a simple interface focused on `string -> string` zlib and gzip
 (de)compression.
 

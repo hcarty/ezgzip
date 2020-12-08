@@ -99,7 +99,7 @@ module Z = struct
         error (Compression_error message)
 end
 
-let id1_id2 = "\x1f‹"
+let id1_id2 = "\x1f\x8b"
 
 (* XXX: Hard-coded gzip header may not be the best idea... *)
 let header =
@@ -107,7 +107,7 @@ let header =
   let flags1 = "\x00" in
   let time = "\x00\x00\x00\x00" in
   let flags2 = "\x00" in
-  let os = "ÿ" in
+  let os = "\xff" in
   String.concat [id1_id2; compression_method; flags1; time; flags2; os]
 
 
